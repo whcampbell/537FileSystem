@@ -1,0 +1,9 @@
+To do list for p4
+
+Client Interface:
+libmfs.c
+Idempotency - wait using select()
+
+Server System Image write:
+Log structured FS
+Idempotency - empty buffers via fsync() 
