@@ -4,19 +4,24 @@
 #include "mfs.h"
 #include "udp.h"
 
+#define BUFFER_SIZE (1000)
+
 int globalPort;
+int globalSd;
 
 int MFS_Init(char *hostname, int port) {
     globalPort = port;
-   // struct sockaddr_in addr;
-   // int rc_open = UDP_Open(port);
-   // int rc_socket = UDP_FillSockAddr(&addr, hostname, port);
-   // if (rc_open | rc_socket){
-   //     return -1;
-   // }
+    struct sockaddr_in addrSnd;
+    int sd = UDP_Open(port);
+    globalSd = sd;
+    int rc = UDP_FillSockAddr(&addrSnd, hostname, port);
+    if (sd == -1){
+        return sd;
+    }
+    if (rc == -1){
+        return sd;
+    }
     return 0;
-    //printf("Not very fancy MFS_Init %s %d\n", hostname, port);
-    //return 0;
 }
 
 
@@ -51,5 +56,14 @@ int MFS_Unlink(int pinum, char *name) {
 
 
 int MFS_Shutdown() {
-    return UDP_Close(globalPort); // TODO, get the fd
+    // char reply[BUFFER_SIZE];
+    // struct addrRcv;
+    // int rcRead = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
+    // int rcClose = UDP_Close(globalSd); 
+    // if (rcRead | rcClose){
+    //     return -1;
+    // }
+    return 0;
 }
+
+// to do , add a check reply, etc

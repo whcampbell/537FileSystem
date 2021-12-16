@@ -2,7 +2,7 @@ CC     := gcc
 CFLAGS := -Wall -Werror -g
 LDFLAGS:= -L. -lmfs
 
-LIB    := mfs.c
+LIB	   := mfs.c
 
 DEPS   := udp.c
 
