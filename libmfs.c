@@ -56,13 +56,13 @@ int MFS_Unlink(int pinum, char *name) {
 
 
 int MFS_Shutdown() {
-    // char reply[BUFFER_SIZE];
-    // struct addrRcv;
-    // int rcRead = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
-    // int rcClose = UDP_Close(globalSd); 
-    // if (rcRead | rcClose){
-    //     return -1;
-    // }
+    char reply[BUFFER_SIZE];
+    struct addrRcv;
+    int rcRead = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
+    int rcClose = UDP_Close(globalSd); 
+    if (rcRead | rcClose){
+        return -1;
+    }
     return 0;
 }
 
