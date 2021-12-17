@@ -10,12 +10,14 @@ int globalPort;     // Needed for UDP Write/Read Calls
 int globalSd;       // Needed for UDP Write, Read, and Close
 
 // Message struct used for request and replies from the server
-typedef struct __Message {
+struct message {
+    char opcode[BUFFER_SIZE];
     char msg[BUFFER_SIZE];
     //todo, add more fields for relevant args   
-} Message;
+};
+// global msg
+struct message *msg = NULL;
 
-struct Message* msg;
 // Not sure if these are needed client side yet or not
 // struct MFS_Stat_t* stat;
 // struct MFS_DirEnt_t* dirEntry;
@@ -46,6 +48,8 @@ int MFS_Init(char *hostname, int port) {
     if (rc <= -1) {
         return rc;
     }
+    // make sure to dynamically allocate our message struct!
+    struct message *msg = (struct message*) malloc(sizeof(struct message)); 
     // should be done with init at this point
     return 0;
 }
@@ -83,11 +87,17 @@ int MFS_Unlink(int pinum, char *name) {
 
 int MFS_Shutdown() {
     //todo: take the msg struct and convert into a string msg for data transfer over UDP
-    char msg[BUFFER_SIZE];
-    sprintf(msg, "7");
+    strcpy(msg->opcode, "7");
+    //strcpy(msg->msg, "");
+    // turn struct into string and print!
+    char bitStr[BUFFER_SIZE];
+    strcpy(bitStr, msg->opcode);
+    //strcat(bitStr,  msg->msg);
+    char sendMsg[sizeof(struct message)];
+    memcpy(sendMsg, bitStr, sizeof(struct message));
     char reply[BUFFER_SIZE];
     // tell server to shut down, check return code
-    int rc = UDP_Write(globalPort, &addrSend, msg, BUFFER_SIZE);
+    int rc = UDP_Write(globalPort, &addrSend, sendMsg, BUFFER_SIZE);
     if (rc <= -1){
         return rc;
     }
