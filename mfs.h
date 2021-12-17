@@ -17,6 +17,21 @@ typedef struct __MFS_DirEnt_t {
     int  inum;      // inode number of entry (-1 means entry not used)
 } MFS_DirEnt_t;
 
+// Communication/argument passing protocol: 
+//   The first character in the "buffer" string (one of the UDP_Write args) will
+//   encode the operation being called for. The encoding is thus:
+//   	1: lookup
+//   	2: stat
+//   	3: write
+//   	4: read
+//   	5: creat
+//   	6: unlink
+//   	7: shutdown
+//   from then on, the data in the string will contain the arguments which
+//   can be parsed in the specific way that call desires
+//   (my plan is to have a big switch statement referring to a bunch of helper
+//   methods)
+
 
 int MFS_Init(char *hostname, int port);
 int MFS_Lookup(int pinum, char *name);

@@ -15,11 +15,9 @@ int* pieces;
 
 int readImage(char* path) {
     image = open(path, O_RDWR);
-    printf("image fd is %d\n", image);
     int* temp = malloc(sizeof(int));
-    int ret = read(image, temp, sizeof(int));
+    read(image, temp, sizeof(int));
     end = *temp;
-    printf("read end return is %d\n", ret);
     pieces = malloc(256 * sizeof(int));
     read(image, pieces, 256 * sizeof(int));
 
@@ -62,18 +60,9 @@ int main(int argc, char *argv[]) {
 
     if (access(argv[2], F_OK) == 0) {
 	readImage(argv[2]);
-	printf("reading\n");
     } else {
 	initImage(argv[2]);
-	printf("initializing\n");
     }
-
-    printf("end is %d\n", end);
-
-    free(pieces);
-    int res = close(image);
-    printf("close result is %d", res);
-    return 0;
 
     int sd = UDP_Open(10000);
     assert(sd > -1);
