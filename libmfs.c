@@ -6,21 +6,47 @@
 
 #define BUFFER_SIZE (1000)
 
-int globalPort;
-int globalSd;
+int globalPort;     // Needed for UDP Write/Read Calls
+int globalSd;       // Needed for UDP Write, Read, and Close
+
+// Message struct used for request and replies from the server
+typedef struct __Message {
+    char msg[BUFFER_SIZE];
+    //todo, add more fields for relevant args   
+} Message;
+
+struct Message* msg;
+// Not sure if these are needed client side yet or not
+// struct MFS_Stat_t* stat;
+// struct MFS_DirEnt_t* dirEntry;
+// Send and receive addrs for client/server communication
+struct sockaddr_in* addrSend;
+struct sockaddr_in* addrRcv;
+
+// General Process to think about per response in piazza post @1320 
+// MFS_Operation(arguments){
+//      update global message struct with argument values;   
+//      send_message();
+// }
 
 int MFS_Init(char *hostname, int port) {
-    globalPort = port;
-    struct sockaddr_in addrSnd;
+    // dynamically allocate send and receieve addrs
+    addrSend = malloc(sizeof(sockaddr_in*));
+    addrRcv = malloc(sizeof(sockaddr_in*));
+    // open the connection to the server
     int sd = UDP_Open(port);
+    if (sd <= -1) {
+        return sd;
+    }
+    // set globals for uses in other MFS calls
     globalSd = sd;
-    int rc = UDP_FillSockAddr(&addrSnd, hostname, port);
-    if (sd == -1){
-        return sd;
+    globalPort = port;
+    // set up the send path to the server
+    int rc = UDP_FillSockAddr(&addrSend, hostname, 10007); // NOTE: This will have to vary from time to time to work on CSL Machines
+    if (rc <= -1) {
+        return rc;
     }
-    if (rc == -1){
-        return sd;
-    }
+    // should be done with init at this point
     return 0;
 }
 
@@ -56,12 +82,24 @@ int MFS_Unlink(int pinum, char *name) {
 
 
 int MFS_Shutdown() {
+    //todo: take the msg struct and convert into a string msg for data transfer over UDP
+    char msg[BUFFER_SIZE];
+    sprintf(msg, "7");
     char reply[BUFFER_SIZE];
-    struct addrRcv;
+    // tell server to shut down, check return code
+    int rcWrite = UDP_Write(globalPort, &addrSend, msg, BUFFER_SIZE);
+    if (rcWrite <= -1){
+        return rcWrite;
+    }
+    // wait for a reply from server that it shut down, check return code
     int rcRead = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
+     if (rcRead <= -1){
+        return rcRead;
+    }
+    // now can close connection from client to server, check return code
     int rcClose = UDP_Close(globalSd); 
-    if (rcRead | rcClose){
-        return -1;
+    if (rcClose <= -1){
+        return rcClose;
     }
     return 0;
 }

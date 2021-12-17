@@ -8,9 +8,20 @@
 
 #define BUFFER_SIZE (1000)
 
+// Message struct used for request and replies from the client
+typedef struct __Message {
+    char msg[BUFFER_SIZE];
+    //todo, add more field for relevant args   
+} Message;
+
+struct Message* msg;
+
 int end;
 int image;
 int* pieces;
+
+//do we need a global socket descriptor?
+//int sd;
 
 
 int readImage(char* path) {
@@ -64,7 +75,7 @@ int main(int argc, char *argv[]) {
 	initImage(argv[2]);
     }
 
-    int sd = UDP_Open(10000);
+    int sd = UDP_Open(10007); // NOTE: This will have to vary from time to time to work on CSL Machines
     assert(sd > -1);
     while (1) {
 	struct sockaddr_in addr;
@@ -86,7 +97,26 @@ int main(int argc, char *argv[]) {
 
 	printf("server:: read message [size:%d contents:(%s)]\n", rc, message);
 	if (rc > 0) {
+            // TODO :copy the string formatted message and transform data into our msg struct
             char reply[BUFFER_SIZE];
+
+            // SHUTDOWN Sequence
+            if (strcmp(message, "7") == 0 ) {
+                sprintf(reply, "goodbye world");
+                rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+                if (rc <= -1){
+                    return rc;
+                }
+                // close the socket for the server, check return code
+                rc = UDP_Close(sd);
+                if (rc <= -1)
+                {
+                    return rc;
+                }
+                else {
+                    return 0;
+                }
+            }
             sprintf(reply, "goodbye world");
             rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
 	    printf("server:: reply\n");
