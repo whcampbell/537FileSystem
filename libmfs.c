@@ -87,19 +87,19 @@ int MFS_Shutdown() {
     sprintf(msg, "7");
     char reply[BUFFER_SIZE];
     // tell server to shut down, check return code
-    int rcWrite = UDP_Write(globalPort, &addrSend, msg, BUFFER_SIZE);
-    if (rcWrite <= -1){
-        return rcWrite;
+    int rc = UDP_Write(globalPort, &addrSend, msg, BUFFER_SIZE);
+    if (rc <= -1){
+        return rc;
     }
     // wait for a reply from server that it shut down, check return code
-    int rcRead = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
-     if (rcRead <= -1){
-        return rcRead;
+    rc = UDP_Read(globalPort, &addrRcv, reply, BUFFER_SIZE);
+    if (rc <= -1){
+        return rc;
     }
     // now can close connection from client to server, check return code
-    int rcClose = UDP_Close(globalSd); 
-    if (rcClose <= -1){
-        return rcClose;
+    rc = UDP_Close(globalSd); 
+    if (rc <= -1){
+        return rc;
     }
     return 0;
 }
