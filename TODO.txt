@@ -1,9 +1,56 @@
 To do list for p4
 
-Client Interface:
+Colton - Client Interface:
 libmfs.c
 Idempotency - wait using select()
 
-Server System Image write:
+
+
+Will - Server System Image write:
+
+Started with port number to listen on
+	Port protocols?
+	local host <num>?
+	look up
+
+Create system image if does not exist
+	server can target diff sys images
+	serialized (duh)
+
 Log structured FS
+	checkpoint region at beginning
+		addrs of inode map pieces
+		disk pointer to end of log (incrementing)
+	ever growing log after
+		data block
+		inode
+			array of direct pointers
+		piece of map
+			indexed list of inodes
+inode breakdown
+4096 possible inodes - 12 bit address
+maps have 16 entries - 256 map pieces - 8 bits of address
+remaining four bits are index of entry
+
+0000         |00000000
+inode index  |map index (in checkpoint section);
+
+		directory
+			identified by an inode
+			entries are 32 bytes
+				4096 / 32 bytes = 128 total entries
+				4 bytes for inode
+				28 for name
+				allocated on creation, set to -1
+			first two entries are . and ..
+				. is a name, inode number is self inode number
+				.. is name for parent, has parent inode number 
+
+
 Idempotency - empty buffers via fsync() 
+	in case of crash
+		not really certain what this does
+
+Communication
+	Finish all operations before going to UDP read
+		prevents shutdown before sending back reply
