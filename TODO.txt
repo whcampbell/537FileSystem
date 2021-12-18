@@ -24,6 +24,8 @@ Log structured FS
 	ever growing log after
 		data block
 		inode
+			size field
+			type field
 			array of direct pointers
 		piece of map
 			indexed list of inodes
