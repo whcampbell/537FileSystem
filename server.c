@@ -43,6 +43,12 @@ int traverse(int inum) {
 }
 
 
+int mfLookup(int pinum, char* name) {      
+    int dpoint = traverse(pinum);
+    // iterate through for matching name
+    // send back corresponding inode
+}
+
 int mfRead(int inum, char* buffer, int block) {
 
 }
@@ -60,17 +66,61 @@ int mfWrite(int inum, char* data) {
 
 
 int mfCreat(char* name, int pinum, int type) {
-// check if name exists in parent
-// pick new inum
-// add to parent directory
-// send back confirm code
-}
+    // check if name exists in parent
+    int exists = mfLookup(pinum, name);
+    if (exists) {
+	//TODO send back success
+	return 0;
+    }
+
+    // pick new inum
+    int i;
+    int* prevPiece = pieces[0];
+    int mapPiece[16];
+    int inum = -1;
+    for (i = 1; i < 256; ++i) { 
+	if (pieces[i] == 0) { // we're entering the land of empty pieces
+	    lseek(image, *prevPiece, SEEK_SET); // check if the last piece is entirely full
+	    read(image, mapPiece, sizeof(int) * 16);
+	    int j;
+	    for (j = 0; j < 16; ++j) {
+		if (mapPiece[j] == 0) {
+		   inum = j * 256;
+		   inum += i; // i is one too big, but inum starts at -1, so it all good
+		   --i;
+		} else {
+		    continue;
+		}
+	    }
+	    if (inum == -1) { // an empty inum was not found in the prev map piece
+		inum = i; // put it in the first spot of the next map piece
+	    }	
+	
+	} else {
+	    prevPiece = pieces[i];
+	    continue;
+	}
+    } 
+    
+    // go to end of file
+    lseek(image, end, SEEK_SET);
+
+    // if directory, add directory data block
 
 
-int mfLookup(int pinum, char* name) {      
-    int dpoint = traverse(pinum);
-    // iterate through for matching name
-    // send back corresponding inode
+
+    // add inode to end of list with map piece
+    struct inode newNode;
+    newNode.size = 0;
+    newNode.type = type;
+    
+
+    // add to checkpoint region - update in mem and on disk
+    // add to parent directory
+
+    // send back confirm code
+
+    return 0;
 }
 
 
@@ -113,13 +163,14 @@ int initImage(char* path) {
     end = 257;
     pieces = calloc(256 * sizeof(int));
 
-    // dump to file
+    // open new file
     image = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (image < 0) {
 	printf("unable to create file\n");
 	exit(1);
     }
 
+    // create root directory
     int* root = malloc(128 * sizeof(struct __MFS_DirEnt_t));
     struct __MFS_DirEnt_t self;
     struct __MFS_DirEnt_t parent;
@@ -129,6 +180,7 @@ int initImage(char* path) {
     strcpy(parent.name, parentName);
     //TODO finish initializing root with own inodes, inode block, map piece
 
+    // write all to sys image file
     int num = end;
     write(image, &num, sizeof(num));
     write(image, pieces, 256 * sizeof(int));
