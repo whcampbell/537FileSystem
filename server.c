@@ -8,19 +8,29 @@
 
 #define BUFFER_SIZE (1000)
 
-// Message struct used for request and replies from the client
-typedef struct __Message {
-    char msg[BUFFER_SIZE];
-    //todo, add more field for relevant args   
-} Message;
+// Message struct used for request and replies from the server
+struct message {
+    // TODO, check data type and length
+    char opcode[2];         // single digit opcode and null char
+    char inum[5];           // max is 4095, converted to char is 4 bytes plus null char
+    char pinum[5];          
+    char name[BUFFER_SIZE];
+    char m[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    char block[3];
+    char type[2];   
+};
 
 typedef struct inode {
     int size;
     int type;
     int pointers[14];
-}
+} INode;
 
-struct Message* msg;
+// global msg
+struct message *msg = NULL;
+
+char replyGlobal[BUFFER_SIZE];
 
 int end;
 int image;
@@ -40,8 +50,38 @@ int traverse(int inum) {
     lseek(image, ppoint + bucket * 4, SEEK_SET);
     int* ipoint = 0;
     read(image, ipoint, sizeof(int));
-    printf("ipoint is %d\n", ipoint);
+    printf("ipoint is %d\n", *ipoint);
     return *ipoint;
+}
+
+int mfLookup(int pinum, char* name) {      
+    int dpoint = traverse(pinum);
+    lseek(image, dpoint, SEEK_SET);
+    struct inode* node = 0;
+    read(image, node, sizeof(struct inode));
+    int found = -1;
+    int i;
+    // iterate through for matching name
+    // send back corresponding inode
+    for (i = 0; i < 14; i++) {
+        lseek(image, node->pointers[i], SEEK_SET);
+        int j;
+        for (j = 0; j < 120; j++){ // 4096 (total bytes in a data block) / 32 (size of dir entry) = 128 poss dir entries
+            struct __MFS_DirEnt_t* dirEntry = 0;
+            read(image, dirEntry, sizeof(struct __MFS_DirEnt_t));
+            if (strcmp(dirEntry->name, name) == 0 && dirEntry->inum > -1 ){
+                // FOUND IT!!!, set the message to success make the client jump for joy!
+                found = 1;
+            }
+        }
+    }
+        ///didnt find it, set appropriate message to be send back to client
+    if (found == -1) {
+        strcpy(replyGlobal, "-1");   
+    }
+
+    strcpy(replyGlobal, "0");
+    return -1;
 }
 
 
@@ -52,11 +92,12 @@ int mfLookup(int pinum, char* name) {
 }
 
 int mfRead(int inum, char* buffer, int block) {
-
+    strcpy(replyGlobal, "-1");
+    return -1;
 }
 
 
-int mfWrite(int inum, char* data) {
+int mfWrite(int inum, char* buffer, int block) {
 //get addrs of old data blocks
 //write new data blocks
 //write inode block with old and new data pointers
@@ -64,11 +105,13 @@ int mfWrite(int inum, char* data) {
 //update checkpoint region with new map piece
 //write checkpoint in file
 //send back response
+    strcpy(replyGlobal, "-1");  
+    return -1;
 }
 
 
-int mfCreat(char* name, int pinum, int type) {
-    // check if name exists in parent
+int mfCreat(int pinum, int type, char* name) {
+    //check if name exists in parent
     int exists = mfLookup(pinum, name);
     if (exists) {
 	strcpy(replyGlobal, "0");
@@ -107,9 +150,9 @@ int mfCreat(char* name, int pinum, int type) {
     // go to end of file
     lseek(image, end, SEEK_SET);
 
-    struct inode newNode;
+    struct inode* newNode = 0;
     // if directory, add directory data block and set inode accordingly
-    if (type = MFS_DIRECTORY) {
+    if (type == MFS_DIRECTORY) {
 
 	struct __MFS_DirEnt_t entries[128];
 	strcpy(entries[0].name, thisDir);
@@ -122,18 +165,17 @@ int mfCreat(char* name, int pinum, int type) {
 	    entries[z].inum = -1;
 	}
 
-	write(image, entries, 128 * sizeof(__MFS_DirEnt_t));
+	write(image, entries, 128 * sizeof(struct __MFS_DirEnt_t));
 
-	newNode.type = type;
-	newNode.size = 4096;
-	newNode.pointers[0] = end;
+	newNode->type = type;
+	newNode->size = 4096;
+	newNode->pointers[0] = end;
 	end += 4096;
 	lseek(image, end, SEEK_SET);
     } else {
-	newNode.size = 0;
-	newNode.type = type;
+	newNode->size = 0;
+	newNode->type = type;
     }
-
 
     // add inode to end of list with map piece
     write(image, newNode, sizeof(struct inode));
@@ -149,23 +191,20 @@ int mfCreat(char* name, int pinum, int type) {
     write(image, pieces, 256 * sizeof(int));
 
     // add to parent directory
-    int pinode = traverse(pinum);
+    int pinodePoint = traverse(pinum);
     int k;
     int l;
-    lseek(image, pinode, SEEK_SET);
+    lseek(image, pinodePoint, SEEK_SET);
     struct inode* pinode = 0;
-    read(image, pinode, sizeof(inode));
+    read(image, pinode, sizeof(struct inode));
     for(k = 0; k < 14; ++k) {
-	if (pinode.pointers[k] == -1) {
-	    //TODO add new dir data block
-	}
-	lseek(image, pinode.pointers[k]);
+	lseek(image, pinode->pointers[k], SEEK_SET);
 	for(l = 0; l < 128; ++l) {
 	    struct __MFS_DirEnt_t* dirBucket = 0;
-	    read(image, dirBucket, sizeof(__MFS_DirEnt_t));
-	    if (dirBucket.inum == -1) {
-		dirBucket.inum = inum; // the "inum" variable from all the way back there ^
-		strcpy(dirBucket.name, name);
+	    read(image, dirBucket, sizeof(struct __MFS_DirEnt_t));
+	    if (dirBucket->inum == -1) {
+		dirBucket->inum = inum; // the "inum" variable from all the way back there ^
+		strcpy(dirBucket->name, name);
 	    } else {
 		continue;
 	    }
@@ -177,26 +216,41 @@ int mfCreat(char* name, int pinum, int type) {
     return 0;
 }
 
-
 int mfStat(int inum) {
-    ipointer = traverse(inum);
-//send back stat data from this inode/file
+    int ipointer = traverse(inum);
+    lseek(image, ipointer, SEEK_SET);
+    int* size = 0;
+    read(image, size, 4);
+    int* type = 0;
+    read(image, type, 4);
+
+    //prep the buffer for stat data to be sent back from this inode/file
+    char bitStr[BUFFER_SIZE];
+    // convert ints to char*
+    char sizeAsStr[5];
+    char typeAsStr[2];
+	sprintf(sizeAsStr, "%d", *size);
+    sprintf(typeAsStr, "%d", *type);
+    strcpy(bitStr, "0");
+    strcat(bitStr, ",");
+    strcat(bitStr, typeAsStr);
+    strcat(bitStr, ",");
+    strcat(bitStr, sizeAsStr);
+    char sendMsg[sizeof(struct message)];
+    memcpy(sendMsg, bitStr, sizeof(struct message)); // might seem redundant right now but useful later for multiple strings (I think)
+    strcpy(replyGlobal, sendMsg); // set the global reply
+    return 0;
 }
 
 
 int mfUnlink(int pinum, char* name) {
-    int dpoint = traverse(pinum);
+ //   int dpoint = traverse(pinum);
 //iterate through directory to find name
 //swap its inode to -1
 //send back reply
+    strcpy(replyGlobal, "-1");
+    return -1;
 }
-
-
-int mfShutdown() {
-    // force to disk
-    // send back reply
-}
-
 
 int readImage(char* path) {
     image = open(path, O_RDWR);
@@ -273,7 +327,7 @@ int main(int argc, char *argv[]) {
 	initImage(argv[2]);
     }
 
-    int sd = UDP_Open(10007); // NOTE: This will have to vary from time to time to work on CSL Machines
+    int sd = UDP_Open(49337); // NOTE: This will have to vary from time to time to work on CSL Machines
     assert(sd > -1);
     while (1) {
 	struct sockaddr_in addr;
@@ -283,7 +337,7 @@ int main(int argc, char *argv[]) {
 
 	//        *CALL*                *MESSAGE FORMAT*              *Struct fields to be made from string*
     //        lookup                ("1,pinum,name")            ; pinum->int, name->char*
-	//        stat                  ("2,pinum,m")               ; pinum->int, m->MFS_Stat_t*
+	//        stat                  ("2,pinum)                  ; pinum->int
 	//        write                 ("3,inum,buffer,block")     ; inum->int, buffer->char*, block->int
 	//        read                  ("4,inum,buffer,block")     ; inum->int, buffer->char*, block->int
 	//        creat                 ("5,pinum,type,name")       ; pinum->int, type->int, name->char*
@@ -291,24 +345,69 @@ int main(int argc, char *argv[]) {
 	//        shutdown ("7")        ("7")
 	//    do this after the rc is checked (within that "if" down there)
 	
-	int opcode = atoi(message[0]);
-	switch(opcode) {
-	    case 
-	    case 7: 
-		mfShutdown();
-		break;
-	}
 
 
 	printf("server:: read message [size:%d contents:(%s)]\n", rc, message);
-	if (rc > 0) {
-            // TODO :copy the string formatted message and transform data into our msg struct
-            char reply[BUFFER_SIZE];
+    
 
-            // SHUTDOWN Sequence
-            if (strcmp(message, "7") == 0 ) {
-                sprintf(reply, "goodbye world");
-                rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+	if (rc > 0) {
+
+        int shutdown = -1;
+
+        // parse message
+        char* messageParse = strdup(message);
+        char* opcode;
+        if ((opcode = strsep(&messageParse, ",")) != NULL) {
+
+            /********* LOOKUP **********/
+            if (strcmp(opcode, "1") == 0){
+                char* pinum = strsep(&messageParse, ",");
+                char* name = strsep(&messageParse, ",");
+                mfLookup(atoi(pinum), name);
+            }
+            /********* STAT **********/
+            if (strcmp(opcode, "2") == 0){
+                char* inum = strsep(&messageParse, ",");
+                mfStat(atoi(inum));
+            }
+            /********* WRITE **********/
+            if (strcmp(opcode, "3") == 0){
+                char* inum = strsep(&messageParse, ",");
+                char* buffer = strsep(&messageParse, ",");
+                char* block = strsep(&messageParse, ",");
+                mfWrite(atoi(inum), buffer, atoi(block));
+            }
+            /********* READ **********/
+            if (strcmp(opcode, "4") == 0){
+                char* inum = strsep(&messageParse, ",");
+                char* buffer = strsep(&messageParse, ",");
+                char* block = strsep(&messageParse, ",");
+                mfRead(atoi(inum), buffer, atoi(block));
+            }
+            /********* CREAT **********/
+            if (strcmp(opcode, "5") == 0){
+                char* pinum = strsep(&messageParse, ",");
+                char* type = strsep(&messageParse, ",");
+                char* name = strsep(&messageParse, ",");
+                mfCreat(atoi(pinum), atoi(type), name);
+            }
+            /********* UNLINK **********/
+            if (strcmp(opcode, "6") == 0){
+                char* pinum = strsep(&messageParse, ",");
+                char* name = strsep(&messageParse, ",");
+                mfUnlink(atoi(pinum), name);
+            }
+            /********* SHUTDOWN **********/
+            if (strcmp(opcode, "7") == 0){
+                shutdown = 1;
+            }
+        }
+            
+
+            /********** SHUTDOWN SEQUENCE ********/
+            if (shutdown > 0) {
+                sprintf(replyGlobal, "0");
+                rc = UDP_Write(sd, &addr, replyGlobal, BUFFER_SIZE);
                 if (rc <= -1){
                     return rc;
                 }
@@ -319,11 +418,11 @@ int main(int argc, char *argv[]) {
                     return rc;
                 }
                 else {
-                    return 0;
+                    exit(0); // success
                 }
             }
-            sprintf(reply, "goodbye world");
-            rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+            /***** WRITE REPLY BACK TO CLIENT (REPLY SET IN HELPER FUNCTIONS) *******/
+            rc = UDP_Write(sd, &addr, replyGlobal, BUFFER_SIZE);
 	    printf("server:: reply\n");
 	} 
     }
