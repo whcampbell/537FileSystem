@@ -101,6 +101,7 @@ int MFS_Lookup(int pinum, char *name) {
         return -1;
     }
 
+    // check reply
     int inode = -1;
     if (strcmp(reply, "-1") == 0){
         return inode;
@@ -131,25 +132,35 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
     // send packet to server
     int rc = UDP_Write(*globalSd, addrSend, sendMsg, sizeof(struct message));
     if (rc <= -1){
-        printf("Failure on Client UDP Write during MFS_Write; rc =: %d\n", rc );
+        printf("Failure on Client UDP Write during MFS_STAT; rc =: %d\n", rc );
         return -1;
     }
     // wait for a reply from server
     rc = UDP_Read(*globalSd, addrReceive, reply, sizeof(struct message));
     if (rc <= -1){
-        printf("Failure on Client UDP Read during MFS_Write; rc =: %d\n", rc );
+        printf("Failure on Client UDP Read during MFS_STAT; rc =: %d\n", rc );
         return -1;
     }
 
     // PROCESS REPLY FROM SERVER
     //success
-    if (strcmp(reply, "0")){
-        return 0;
+    char* replyParse = strdup(reply);
+    char* success;
+    if ((success = strsep(&replyParse, ",")) != NULL) {
+        // success!
+        if (atoi(success) == 0){
+            char* typeStr = strsep(&replyParse, ",");
+            char* sizeStr = strsep(&replyParse, ",");
+            m->type = atoi(typeStr);
+            m->size = atoi(sizeStr);
+            return 0;
+        }
+        //failure
+        else {
+            return -1;
+        }
     }
-    //failure
-    else {
-        return -1;
-    }
+    return -1; // terrible failure
 }
 
 
@@ -295,7 +306,7 @@ int MFS_Creat(int pinum, int type, char *name) {
 
     // PROCESS REPLY FROM SERVER
     //success
-    if (strcmp(reply, "0")){
+    if (strcmp(reply, "0") == 0 ){
         return 0;
     }
     //failure
@@ -374,6 +385,11 @@ int MFS_Shutdown() {
     if (rc <= -1){
         printf("Failure on Client UDP Read during Shutdown; rc =: %d\n", rc );
         return rc;
+    }
+
+    // check success from server
+    if(strcmp(reply, "0") != 0){
+        return -1;
     }
 
     //now can close connection from client to server, check return code
