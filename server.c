@@ -55,40 +55,35 @@ int traverse(int inum) {
 }
 
 int mfLookup(int pinum, char* name) {      
-    int dpoint = traverse(pinum);
-    lseek(image, dpoint, SEEK_SET);
-    struct inode* node = 0;
-    read(image, node, sizeof(struct inode));
-    int found = -1;
+    //int dpoint = traverse(pinum);
+    //lseek(image, dpoint, SEEK_SET);
+    //struct inode* node = 0;
+    //read(image, node, sizeof(struct inode));
+    //int found = -1;
     int i;
     // iterate through for matching name
     // send back corresponding inode
     for (i = 0; i < 14; i++) {
-        lseek(image, node->pointers[i], SEEK_SET);
+        //lseek(image, node->pointers[i], SEEK_SET);
         int j;
         for (j = 0; j < 120; j++){ // 4096 (total bytes in a data block) / 32 (size of dir entry) = 128 poss dir entries
-            struct __MFS_DirEnt_t* dirEntry = 0;
-            read(image, dirEntry, sizeof(struct __MFS_DirEnt_t));
-            if (strcmp(dirEntry->name, name) == 0 && dirEntry->inum > -1 ){
-                // FOUND IT!!!, set the message to success make the client jump for joy!
-                found = 1;
-            }
+            //struct __MFS_DirEnt_t* dirEntry = 0;
+            //read(image, dirEntry, sizeof(struct __MFS_DirEnt_t));
+            // if (strcmp(dirEntry->name, name) == 0 && dirEntry->inum > -1 ){
+            //     // FOUND IT!!!, set the message to success make the client jump for joy!
+            //     found = 1;
+            // }
         }
     }
+
         ///didnt find it, set appropriate message to be send back to client
-    if (found == -1) {
-        strcpy(replyGlobal, "-1");   
-    }
+    // if (found == -1) {
+    //     strcpy(replyGlobal, "-1");
+    //     return -1;   
+    // }
 
     strcpy(replyGlobal, "0");
-    return -1;
-}
-
-
-int mfLookup(int pinum, char* name) {      
-    int dpoint = traverse(pinum);
-    // iterate through for matching name
-    // send back corresponding inode
+    return 0;
 }
 
 int mfRead(int inum, char* buffer, int block) {
@@ -111,105 +106,105 @@ int mfWrite(int inum, char* buffer, int block) {
 
 
 int mfCreat(int pinum, int type, char* name) {
-    //check if name exists in parent
-    int exists = mfLookup(pinum, name);
-    if (exists) {
-	strcpy(replyGlobal, "0");
-	return 0;
-    }
+    // //check if name exists in parent
+    // int exists = mfLookup(pinum, name);
+    // if (exists) {
+	// strcpy(replyGlobal, "0");
+	// return 0;
+    // }
 
-    // pick new inum
-    int i;
-    int j;
-    int prevPiece = pieces[0];
-    int mapPiece[16];
-    int inum = -1;
-    for (i = 1; i < 256; ++i) { 
-	if (pieces[i] == 0) { // we're entering the land of empty pieces
-	    lseek(image, prevPiece, SEEK_SET); // check if the last piece is entirely full
-	    read(image, mapPiece, sizeof(int) * 16);
-	    for (j = 0; j < 16; ++j) {
-		if (mapPiece[j] == 0) {
-		   inum = j * 256;
-		   inum += i; // i is one too big, but inum starts at -1, so it all good
-		   --i;
-		} else {
-		    continue;
-		}
-	    }
-	    if (inum == -1) { // an empty inum was not found in the prev map piece
-		inum = i; // put it in the first spot of the next map piece
-	    }	
+    // // pick new inum
+    // int i;
+    // int j;
+    // int prevPiece = pieces[0];
+    // int mapPiece[16];
+    // int inum = -1;
+    // for (i = 1; i < 256; ++i) { 
+	// if (pieces[i] == 0) { // we're entering the land of empty pieces
+	//     lseek(image, prevPiece, SEEK_SET); // check if the last piece is entirely full
+	//     read(image, mapPiece, sizeof(int) * 16);
+	//     for (j = 0; j < 16; ++j) {
+	// 	if (mapPiece[j] == 0) {
+	// 	   inum = j * 256;
+	// 	   inum += i; // i is one too big, but inum starts at -1, so it all good
+	// 	   --i;
+	// 	} else {
+	// 	    continue;
+	// 	}
+	//     }
+	//     if (inum == -1) { // an empty inum was not found in the prev map piece
+	// 	inum = i; // put it in the first spot of the next map piece
+	//     }	
 	
-	} else {
-	    prevPiece = pieces[i];
-	    continue;
-	}
-    } 
+	// } else {
+	//     prevPiece = pieces[i];
+	//     continue;
+	// }
+    // } 
     
-    // go to end of file
-    lseek(image, end, SEEK_SET);
+    // // go to end of file
+    // lseek(image, end, SEEK_SET);
 
-    struct inode* newNode = 0;
-    // if directory, add directory data block and set inode accordingly
-    if (type == MFS_DIRECTORY) {
+    // struct inode* newNode = 0;
+    // // if directory, add directory data block and set inode accordingly
+    // if (type == MFS_DIRECTORY) {
 
-	struct __MFS_DirEnt_t entries[128];
-	strcpy(entries[0].name, thisDir);
-	entries[0].inum = inum;
-	strcpy(entries[1].name, parDir);
-	entries[1].inum = pinum;
+	// struct __MFS_DirEnt_t entries[128];
+	// strcpy(entries[0].name, thisDir);
+	// entries[0].inum = inum;
+	// strcpy(entries[1].name, parDir);
+	// entries[1].inum = pinum;
 
-	int z;
-	for (z = 2; z < 128; ++z) {
-	    entries[z].inum = -1;
-	}
+	// int z;
+	// for (z = 2; z < 128; ++z) {
+	//     entries[z].inum = -1;
+	// }
 
-	write(image, entries, 128 * sizeof(struct __MFS_DirEnt_t));
+	// write(image, entries, 128 * sizeof(struct __MFS_DirEnt_t));
 
-	newNode->type = type;
-	newNode->size = 4096;
-	newNode->pointers[0] = end;
-	end += 4096;
-	lseek(image, end, SEEK_SET);
-    } else {
-	newNode->size = 0;
-	newNode->type = type;
-    }
+	// newNode->type = type;
+	// newNode->size = 4096;
+	// newNode->pointers[0] = end;
+	// end += 4096;
+	// lseek(image, end, SEEK_SET);
+    // } else {
+	// newNode->size = 0;
+	// newNode->type = type;
+    // }
 
-    // add inode to end of list with map piece
-    write(image, newNode, sizeof(struct inode));
-    mapPiece[j] = end;
-    end += 64;
-    write(image, mapPiece, 64);
-    pieces[i] = end;
-    end += 64;
+    // // add inode to end of list with map piece
+    // write(image, newNode, sizeof(struct inode));
+    // mapPiece[j] = end;
+    // end += 64;
+    // write(image, mapPiece, 64);
+    // pieces[i] = end;
+    // end += 64;
 
-    // add to checkpoint region - update in mem and on disk
-    lseek(image, 0, SEEK_SET);
-    write(image, &end, sizeof(int));
-    write(image, pieces, 256 * sizeof(int));
+    // // add to checkpoint region - update in mem and on disk
+    // lseek(image, 0, SEEK_SET);
+    // write(image, &end, sizeof(int));
+    // write(image, pieces, 256 * sizeof(int));
 
-    // add to parent directory
-    int pinodePoint = traverse(pinum);
-    int k;
-    int l;
-    lseek(image, pinodePoint, SEEK_SET);
-    struct inode* pinode = 0;
-    read(image, pinode, sizeof(struct inode));
-    for(k = 0; k < 14; ++k) {
-	lseek(image, pinode->pointers[k], SEEK_SET);
-	for(l = 0; l < 128; ++l) {
-	    struct __MFS_DirEnt_t* dirBucket = 0;
-	    read(image, dirBucket, sizeof(struct __MFS_DirEnt_t));
-	    if (dirBucket->inum == -1) {
-		dirBucket->inum = inum; // the "inum" variable from all the way back there ^
-		strcpy(dirBucket->name, name);
-	    } else {
-		continue;
-	    }
-	}
-    }
+    // // add to parent directory
+    // int pinodePoint = traverse(pinum);
+    // int k;
+    // int l;
+    // lseek(image, pinodePoint, SEEK_SET);
+    // struct inode* pinode = 0;
+    // read(image, pinode, sizeof(struct inode));
+    // for(k = 0; k < 14; ++k) {
+	// lseek(image, pinode->pointers[k], SEEK_SET);
+	// for(l = 0; l < 128; ++l) {
+	//     struct __MFS_DirEnt_t* dirBucket = 0;
+	//     read(image, dirBucket, sizeof(struct __MFS_DirEnt_t));
+	//     if (dirBucket->inum == -1) {
+	// 	dirBucket->inum = inum; // the "inum" variable from all the way back there ^
+	// 	strcpy(dirBucket->name, name);
+	//     } else {
+	// 	continue;
+	//     }
+	// }
+    // }
 
     // send back confirm code
     strcpy(replyGlobal, "0");
@@ -267,47 +262,48 @@ int readImage(char* path) {
 
 int initImage(char* path) {
 
-    // set up checkpoint region
-    end = 257 * sizeof(int) + 4096; // account for end, pieces, and root data block
-    pieces = calloc(256 * sizeof(int));
-    pieces[0] = end;
-    end += 64; // account for inode
+    // // set up checkpoint region
+    // end = 257 * sizeof(int) + 4096; // account for end, pieces, and root data block
+    // pieces = calloc(256, 256 * sizeof(int));
+    // pieces[0] = end;
+    // end += 64; // account for inode
 
-    // open new file
-    image = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (image < 0) {
-	printf("unable to create file\n");
-	exit(1);
-    }
+    // // open new file
+    // image = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    // if (image < 0) {
+	// printf("unable to create file\n");
+	// exit(1);
+    // }
 
-    // create root data block
-    struct __MFS_DirEnt_t entries[128];
-    strcpy(entries[0], thisDir);
-    strcpy(entries[1], parDir);
-    thisDir.inum = 0;
-    parDir.inum = 0;
+    // // create root data block
+    // struct __MFS_DirEnt_t entries[128];
+    // strcpy(entries[0].name, thisDir);
+    // strcpy(entries[1].name, parDir);
+    // entries[0].inum = 0;
+    // entries[0].inum = 0;
 
-    int z;
-    for (z = 2; z < 128; ++z) {
-	entries[z].inum = -1;
-    }
+    // int z;
+    // for (z = 2; z < 128; ++z) {
+	// entries[z].inum = -1;
+    // }
 
-    // create root inode
-    struct inode rinode;
-    rinode.size = 4096;
-    rinode.type = MFS_DIRECTORY;
-    for (z = 0; z < 14; ++z) {
-	rinode.pointers[z] = -1;
-    }
+    // // create root inode
+    // struct inode* rinode = 0;
+    // rinode->size = 4096;
+    // rinode->type = MFS_DIRECTORY;
+    // for (z = 0; z < 14; ++z) {
+	// rinode->pointers[z] = -1;
+    // }
 
 
-    // write all to sys image file
-    write(image, &end, sizeof(int));
-    write(image, pieces, 256 * sizeof(int));
-    write(image, entries, 4096);
-    write(image, rinode, 64);
+    // // write all to sys image file
+    // write(image, &end, sizeof(int));
+    // write(image, pieces, 256 * sizeof(int));
+    // write(image, entries, 4096);
+    // write(image, rinode, 64);
 
-    // end, pieces, and file image are all initialized - we're ready to go
+    ////end, pieces, and file image are all initialized - we're ready to go
+
     return 0;
 }
 
