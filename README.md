@@ -1,0 +1,2 @@
+This project was worked on by Colton Raymond and Will Campbell. P4 was to implement a distributed file server using a log
+structured file system. We were able to implement most features of the UDP communication on the shared libary side as well as the server side. Most of our struggles and time constraints came down to trying to figure out the fs implementation on the server side. We were able to pass 8/27 tests at the time of turn in. 
