@@ -60,7 +60,7 @@ int mfRead(int inum, char* buffer, int block) {
 }
 
 
-int mfWrite(int inum, char* buffer, int block) {
+int mfWrite(int inum, char* data) {
 //get addrs of old data blocks
 //write new data blocks
 //write inode block with old and new data pointers
@@ -72,7 +72,7 @@ int mfWrite(int inum, char* buffer, int block) {
 }
 
 
-int mfCreat(int pinum, int type, char* name) {
+int mfCreat(char* name, int pinum, int type) {
 // check if name exists in parent
 // pick new inum
 // add to parent directory
@@ -103,6 +103,28 @@ int mfUnlink(int pinum, char* name) {
 //send back reply
     return -1;
 }
+
+
+int mfShutdown(int sd, struct sockaddr_in* addr, char* reply) {
+    // force to disk
+    
+    // send back reply
+    sprintf(reply, "0");
+    int rc = UDP_Write(sd, addr, reply, BUFFER_SIZE);
+    if (rc <= -1){
+        return rc;
+    }
+    // close the socket for the server, check return code
+    rc = UDP_Close(sd);
+    if (rc <= -1)
+    {
+        return rc;
+    }
+    else {
+        exit(0); // success
+    }
+}
+
 
 int readImage(char* path) {
     image = open(path, O_RDWR);
@@ -182,17 +204,20 @@ int main(int argc, char *argv[]) {
 	initImage(argv[2]);
     }
 
-    int sd = UDP_Open(49337); // NOTE: This will have to vary from time to time to work on CSL Machines
+    int sd = UDP_Open(49334); // NOTE: This will have to vary from time to time to work on CSL Machines
     assert(sd > -1);
     while (1) {
-	struct sockaddr_in addr;
+	struct sockaddr_in* addr = malloc(sizeof(struct sockaddr_in*));
+    // dynamically allocate send and receieve addrs, as well as global ptrs
+    addrGlobal = malloc(sizeof(struct sockaddr_in*));
+    addrGlobal = addr;
 	char message[BUFFER_SIZE];
 	printf("server:: waiting...\n");
-	int rc = UDP_Read(sd, &addr, message, BUFFER_SIZE);
+	int rc = UDP_Read(sd, addr, message, BUFFER_SIZE);
 
 	//        *CALL*                *MESSAGE FORMAT*              *Struct fields to be made from string*
     //        lookup                ("1,pinum,name")            ; pinum->int, name->char*
-	//        stat                  ("2,pinum)                  ; pinum->int
+	//        stat                  ("2,pinum,m")               ; pinum->int, m->MFS_Stat_t*
 	//        write                 ("3,inum,buffer,block")     ; inum->int, buffer->char*, block->int
 	//        read                  ("4,inum,buffer,block")     ; inum->int, buffer->char*, block->int
 	//        creat                 ("5,pinum,type,name")       ; pinum->int, type->int, name->char*
@@ -203,82 +228,48 @@ int main(int argc, char *argv[]) {
 
 
 	printf("server:: read message [size:%d contents:(%s)]\n", rc, message);
-    
-
 	if (rc > 0) {
-
-        char reply[BUFFER_SIZE];
-        int shutdown = -1;
-
-        // parse message
-        char* messageParse = strdup(message);
-        char* opcode;
-        if ((opcode = strsep(&messageParse, ",")) != NULL) {
-
-            /********* LOOKUP **********/
-            if (strcmp(opcode, "1") == 0){
-                char* pinum = strsep(&messageParse, ",");
-                char* name = strsep(&messageParse, ",");
-                mfLookup(atoi(pinum), name);
+            
+            char reply[BUFFER_SIZE];
+            int opcode = atoi((void*) message[0];
+            switch(opcode) { 
+                case 1: 
+                    break;
+                case 2: 
+                    break;
+                case 3: 
+                    break;
+                case 4: 
+                    break;
+                case 5: 
+                    break;
+                case 6: 
+                    break;
+                case 7:
+                    mfShutdown(sd, addrGlobal, reply);
+                    break;
             }
-            /********* STAT **********/
-            if (strcmp(opcode, "2") == 0){
-                char* inum = strsep(&messageParse, ",");
-                mfStat(atoi(inum));
-            }
-            /********* WRITE **********/
-            if (strcmp(opcode, "3") == 0){
-                char* inum = strsep(&messageParse, ",");
-                char* buffer = strsep(&messageParse, ",");
-                char* block = strsep(&messageParse, ",");
-                mfWrite(atoi(inum), buffer, atoi(block));
-            }
-            /********* READ **********/
-            if (strcmp(opcode, "4") == 0){
-                char* inum = strsep(&messageParse, ",");
-                char* buffer = strsep(&messageParse, ",");
-                char* block = strsep(&messageParse, ",");
-                mfRead(atoi(inum), buffer, atoi(block));
-            }
-            /********* CREAT **********/
-            if (strcmp(opcode, "5") == 0){
-                char* pinum = strsep(&messageParse, ",");
-                char* type = strsep(&messageParse, ",");
-                char* name = strsep(&messageParse, ",");
-                mfCreat(atoi(pinum), atoi(type), name);
-            }
-            /********* UNLINK **********/
-            if (strcmp(opcode, "6") == 0){
-                char* pinum = strsep(&messageParse, ",");
-                char* name = strsep(&messageParse, ",");
-                mfUnlink(atoi(pinum), name);
-            }
-            /********* SHUTDOWN **********/
-            if (strcmp(opcode, "7") == 0){
-                shutdown = 1;
-            }
-        }
             
 
-            /********** SHUTDOWN SEQUENCE ********/
-            if (shutdown > 0) {
-                sprintf(reply, "0");
-                rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
-                if (rc <= -1){
-                    return rc;
-                }
-                // close the socket for the server, check return code
-                rc = UDP_Close(sd);
-                if (rc <= -1)
-                {
-                    return rc;
-                }
-                else {
-                    exit(0); // success
-                }
-            }
+            // // SHUTDOWN Sequence TODO: MOVE THIS TO HELPER METHOD
+            // if (strcmp(message, "7") == 0 ) {
+            //     sprintf(reply, "0");
+            //     rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+            //     if (rc <= -1){
+            //         return rc;
+            //     }
+            //     // close the socket for the server, check return code
+            //     rc = UDP_Close(sd);
+            //     if (rc <= -1)
+            //     {
+            //         return rc;
+            //     }
+            //     else {
+            //         exit(0); // success
+            //     }
+            // }
             sprintf(reply, "goodbye world");
-            rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
+            rc = UDP_Write(sd, addr, reply, BUFFER_SIZE);
 	    printf("server:: reply\n");
 	} 
     }

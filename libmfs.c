@@ -57,7 +57,7 @@ int MFS_Init(char *hostname, int port) {
     *globalSd = sd;
     *globalPort = port;
     // set up the send path to the server
-    int rc = UDP_FillSockAddr(addrSend, hostname, 49333); // NOTE: This will have to vary from time to time to work on CSL Machines
+    int rc = UDP_FillSockAddr(addrSend, hostname, 49337); // NOTE: This will have to vary from time to time to work on CSL Machines
     if (rc <= -1) {
         return rc;
     }
@@ -118,21 +118,12 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
 	char numAsStr[5];
 	sprintf(numAsStr, "%d", inum);
     strcpy(msg->inum, numAsStr);
-    // transform struct to string
-    char typeAsStr[2];
-    sprintf(typeAsStr, "%d", m->type);
-    char sizeAsStr[6]; // 4096 * 14 = 57344 or 5 digits plus null char
-    sprintf(sizeAsStr, "%d", m->size);
 
     // set the bit string packet to be sent
     char bitStr[sizeof(struct message)];
     strcpy(bitStr, msg->opcode);
     strcat(bitStr, ",");
     strcat(bitStr, msg->inum);
-    strcat(bitStr, ",");
-    strcat(bitStr, typeAsStr);
-    strcat(bitStr, ",");
-    strcat(bitStr, sizeAsStr);
     char sendMsg[sizeof(struct message)];
     memcpy(sendMsg, bitStr, sizeof(struct message)); // might seem redundant right now but useful later for multiple strings (I think)
     char reply[sizeof(struct message)];
