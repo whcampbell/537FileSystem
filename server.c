@@ -156,6 +156,9 @@ int mfCreat(char* name, int pinum, int type) {
     struct inode* pinode = 0;
     read(image, pinode, sizeof(inode));
     for(k = 0; k < 14; ++k) {
+	if (pinode.pointers[k] == -1) {
+	    //TODO add new dir data block
+	}
 	lseek(image, pinode.pointers[k]);
 	for(l = 0; l < 128; ++l) {
 	    struct __MFS_DirEnt_t* dirBucket = 0;
@@ -211,8 +214,10 @@ int readImage(char* path) {
 int initImage(char* path) {
 
     // set up checkpoint region
-    end = 257;
+    end = 257 * sizeof(int) + 4096; // account for end, pieces, and root data block
     pieces = calloc(256 * sizeof(int));
+    pieces[0] = end;
+    end += 64; // account for inode
 
     // open new file
     image = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -221,43 +226,36 @@ int initImage(char* path) {
 	exit(1);
     }
 
-    // create root directory
-    int* root = malloc(128 * sizeof(struct __MFS_DirEnt_t));
-    struct __MFS_DirEnt_t self;
-    struct __MFS_DirEnt_t parent;
-    char* selfName = ".";
-    char* parentName= = "..";
-    strcpy(self.name, selfName);
-    strcpy(parent.name, parentName);
-    //TODO finish initializing root with own inodes, inode block, map piece
+    // create root data block
+    struct __MFS_DirEnt_t entries[128];
+    strcpy(entries[0], thisDir);
+    strcpy(entries[1], parDir);
+    thisDir.inum = 0;
+    parDir.inum = 0;
+
+    int z;
+    for (z = 2; z < 128; ++z) {
+	entries[z].inum = -1;
+    }
+
+    // create root inode
+    struct inode rinode;
+    rinode.size = 4096;
+    rinode.type = MFS_DIRECTORY;
+    for (z = 0; z < 14; ++z) {
+	rinode.pointers[z] = -1;
+    }
+
 
     // write all to sys image file
-    int num = end;
-    write(image, &num, sizeof(num));
+    write(image, &end, sizeof(int));
     write(image, pieces, 256 * sizeof(int));
+    write(image, entries, 4096);
+    write(image, rinode, 64);
 
     // end, pieces, and file image are all initialized - we're ready to go
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // server code
