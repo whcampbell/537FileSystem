@@ -25,6 +25,8 @@ struct Message* msg;
 int end;
 int image;
 int* pieces;
+char* thisDir = ".";
+char* parDir = "..";
 
 //do we need a global socket descriptor?
 //int sd;
@@ -69,20 +71,20 @@ int mfCreat(char* name, int pinum, int type) {
     // check if name exists in parent
     int exists = mfLookup(pinum, name);
     if (exists) {
-	//TODO send back success
+	strcpy(replyGlobal, "0");
 	return 0;
     }
 
     // pick new inum
     int i;
-    int* prevPiece = pieces[0];
+    int j;
+    int prevPiece = pieces[0];
     int mapPiece[16];
     int inum = -1;
     for (i = 1; i < 256; ++i) { 
 	if (pieces[i] == 0) { // we're entering the land of empty pieces
-	    lseek(image, *prevPiece, SEEK_SET); // check if the last piece is entirely full
+	    lseek(image, prevPiece, SEEK_SET); // check if the last piece is entirely full
 	    read(image, mapPiece, sizeof(int) * 16);
-	    int j;
 	    for (j = 0; j < 16; ++j) {
 		if (mapPiece[j] == 0) {
 		   inum = j * 256;
@@ -105,21 +107,70 @@ int mfCreat(char* name, int pinum, int type) {
     // go to end of file
     lseek(image, end, SEEK_SET);
 
-    // if directory, add directory data block
+    struct inode newNode;
+    // if directory, add directory data block and set inode accordingly
+    if (type = MFS_DIRECTORY) {
 
+	struct __MFS_DirEnt_t entries[128];
+	strcpy(entries[0].name, thisDir);
+	entries[0].inum = inum;
+	strcpy(entries[1].name, parDir);
+	entries[1].inum = pinum;
+
+	int z;
+	for (z = 2; z < 128; ++z) {
+	    entries[z].inum = -1;
+	}
+
+	write(image, entries, 128 * sizeof(__MFS_DirEnt_t));
+
+	newNode.type = type;
+	newNode.size = 4096;
+	newNode.pointers[0] = end;
+	end += 4096;
+	lseek(image, end, SEEK_SET);
+    } else {
+	newNode.size = 0;
+	newNode.type = type;
+    }
 
 
     // add inode to end of list with map piece
-    struct inode newNode;
-    newNode.size = 0;
-    newNode.type = type;
-    
+    write(image, newNode, sizeof(struct inode));
+    mapPiece[j] = end;
+    end += 64;
+    write(image, mapPiece, 64);
+    pieces[i] = end;
+    end += 64;
 
     // add to checkpoint region - update in mem and on disk
+    lseek(image, 0, SEEK_SET);
+    write(image, &end, sizeof(int));
+    write(image, pieces, 256 * sizeof(int));
+
     // add to parent directory
+    int pinode = traverse(pinum);
+    int k;
+    int l;
+    lseek(image, pinode, SEEK_SET);
+    struct inode* pinode = 0;
+    read(image, pinode, sizeof(inode));
+    for(k = 0; k < 14; ++k) {
+	lseek(image, pinode.pointers[k]);
+	for(l = 0; l < 128; ++l) {
+	    struct __MFS_DirEnt_t* dirBucket = 0;
+	    read(image, dirBucket, sizeof(__MFS_DirEnt_t));
+	    if (dirBucket.inum == -1) {
+		dirBucket.inum = inum; // the "inum" variable from all the way back there ^
+		strcpy(dirBucket.name, name);
+	    } else {
+		continue;
+	    }
+	}
+    }
 
     // send back confirm code
-
+    strcpy(replyGlobal, "0");
     return 0;
 }
 
