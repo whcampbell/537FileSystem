@@ -85,6 +85,12 @@ int mfLookup(int pinum, char* name) {
 }
 
 
+int mfLookup(int pinum, char* name) {      
+    int dpoint = traverse(pinum);
+    // iterate through for matching name
+    // send back corresponding inode
+}
+
 int mfRead(int inum, char* buffer, int block) {
     strcpy(replyGlobal, "-1");
     return -1;
@@ -170,7 +176,6 @@ int mfCreat(int pinum, int type, char* name) {
 	newNode->size = 0;
 	newNode->type = type;
     }
-
 
     // add inode to end of list with map piece
     write(image, newNode, sizeof(struct inode));
@@ -266,14 +271,16 @@ int initImage(char* path) {
     end = 257;
     //pieces = calloc(256 * sizeof(int));
 
-    // dump to file
+    // open new file
     image = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (image < 0) {
 	printf("unable to create file\n");
 	exit(1);
     }
 
-    //int* root = malloc(128 * sizeof(struct __MFS_DirEnt_t));
+    // create root directory
+    int* root = malloc(128 * sizeof(struct __MFS_DirEnt_t));
+
     struct __MFS_DirEnt_t self;
     struct __MFS_DirEnt_t parent;
     char* selfName = ".";
@@ -282,6 +289,7 @@ int initImage(char* path) {
     strcpy(parent.name, parentName);
     //TODO finish initializing root with own inodes, inode block, map piece
 
+    // write all to sys image file
     int num = end;
     write(image, &num, sizeof(num));
     write(image, pieces, 256 * sizeof(int));
