@@ -180,15 +180,14 @@ int main(int argc, char *argv[]) {
 	printf("server:: waiting...\n");
 	int rc = UDP_Read(sd, &addr, message, BUFFER_SIZE);
 
-	// based on content of message, do certain operations
-	//    message could be any of the eight from mfs.c
-	//        stat
-	//        lookup
-	//        write
-	//        read
-	//        creat
-	//        unlink (delete)
-	//        shutdown
+	//        *CALL*                *MESSAGE FORMAT*              *Struct fields to be made from string*
+    //        lookup                ("1,pinum,name")            ; pinum->int, name->char*
+	//        stat                  ("2,pinum,m")               ; pinum->int, m->MFS_Stat_t*
+	//        write                 ("3,inum,buffer,block")     ; inum->int, buffer->char*, block->int
+	//        read                  ("4,inum,buffer,block")     ; inum->int, buffer->char*, block->int
+	//        creat                 ("5,pinum,type,name")       ; pinum->int, type->int, name->char*
+	//        unlink (delete)       ("6,pinum,name")            ; pinum->int, name->char*
+	//        shutdown ("7")        ("7")
 	//    do this after the rc is checked (within that "if" down there)
 	
 	int opcode = atoi(message[0]);
